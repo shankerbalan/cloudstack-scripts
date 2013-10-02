@@ -26,7 +26,7 @@ $ cp -v cloudstack-set-guest-password /usr/lib/systemd/scripts/
 * Copy the service file to /usr/lib/systemd/system/
 
 ```
-$ cp -v cloudstack-set-guest-password.service /usr/lib/systemd/system/cloudstack-set-guest-password.service
+$ cp -v cloudstack-set-guest-password.service /usr/lib/systemd/system/
 ```
 * Enable the service
 
