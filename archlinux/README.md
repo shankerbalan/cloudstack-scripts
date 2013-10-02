@@ -11,13 +11,13 @@ Installation Steps
 ------------------
 
 * Install "wget" and "dhcpcd"
-
 ```
-    $ pacman -S wget dhcpcd
-    $ systemctl enable dhcpcd@eth0
+$ pacman -S wget dhcpcd
+$ systemctl enable dhcpcd@eth0
 ```
 
 * Copy script to /usr/lib/systemd/scripts/
+
 ```
 $ cp -v cloudstack-set-guest-password /usr/lib/systemd/scripts/
 ```
