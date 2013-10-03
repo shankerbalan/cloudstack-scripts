@@ -1,0 +1,12 @@
+[Unit]
+Description=CloudStack Guest SSH Key Reset
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/lib/systemd/scripts/cloudstack-set-guest-sshkey
+
+[Install]
+WantedBy=multi-user.target
+
+# This service file runs the cloudstack-set-guest-sshkey script

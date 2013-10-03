@@ -1,0 +1,91 @@
+#!/bin/bash
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+# Installation steps (ArchLinux using base/dhcpcd-6.0.5-1)
+#
+# Install "wget" and "dhcpcd"
+#   $ pacman -S wget dhcpcd
+#   $ systemctl enable dhcpcd@eth0
+# Copy script to /usr/lib/systemd/scripts/
+#   $ cp -v cloudstack-set-guest-sshkey \
+#           /usr/lib/systemd/scripts/
+# Copy the service file to /usr/lib/systemd/system/
+#   $ cp -v cloudstack-set-guest-sshkey.service \
+#     /usr/lib/systemd/system/
+# Enable the service
+#    $ systemctl enable cloudstack-set-guest-sshkey.service
+
+interface=eth0
+keys_received=0
+user=root
+
+if [ ! -x /usr/bin/dhcpcd ]; then
+  logger -t "cloudstack" "$0 only works with base/dhcpcd"
+  exit 1
+fi
+
+SSHKEY_SERVER_IP=$(dhcpcd -U $interface | grep dhcp_server_identifier | cut -f2 -d=)
+
+if [ -n $SSHKEY_SERVER_IP ]; then
+  logger -t "cloudstack" "Sending request to ssh key server at $SSHKEY_SERVER_IP"
+  publickey=$(wget -q -t 3 -T 20 -O - http://$SSHKEY_SERVER_IP/latest/public-keys 2>/dev/null)
+
+  if [ $? -eq 0 ]; then
+    logger -t "cloudstack" "Got response from server at $SSHKEY_SERVER_IP"
+    keys_received=1
+  fi
+fi
+
+# did we find the keys anywhere?
+if [ "$keys_received" == "0" ]; then
+  logger -t "cloudstack" "Failed to get ssh keys from any server"
+  exit 1
+fi
+
+# set ssh public key
+homedir=$(awk -F":" '/^root/{print $6}' /etc/passwd)
+sshdir=$homedir/.ssh
+authorized=$sshdir/authorized_keys
+
+if [ ! -d $sshdir ]; then
+  mkdir $sshdir
+  if [ $? -ne 0 ]; then
+    logger -t "cloudstack" "Failed to create $sshdir"
+    exit 1
+  fi
+fi
+
+if [ ! -f $authorized ]; then
+  touch $authorized
+  if [ $? -ne 0 ]; then
+    logger -t "cloudstack" "Failed to create new file $authorized"
+    exit 1
+  fi
+fi
+
+if [ `grep -c "$publickey" $authorized` == 0 ]; then
+  echo "$publickey" >> $authorized
+  if [ $? -ne 0 ]; then
+    logger -t "cloudstack" "Failed to update $user $authorized with key"
+    exit 1
+  fi
+fi
+
+exit 0
+# vim: set ts=2 sw=2 expandtab
