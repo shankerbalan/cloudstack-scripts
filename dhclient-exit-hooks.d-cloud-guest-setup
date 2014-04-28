@@ -1,6 +1,6 @@
 #!/bin/sh
 # /etc/dhcp/dhclient-exit-hooks.d/cloud-guest-setup
-# runs on firstboot after acquiring DHCP lease, "randomise" crontab run-parts, remove self
+# runs on firstboot after acquiring DHCP lease, "randomise" crontab run-parts, sets random password for plesk admin, remove self
 #
 if [ "$reason" != BOUND ] && [ "$reason" != RENEW ] && [ "$reason" != REBIND ] && [ "$reason" != REBOOT ]; then
     return
@@ -10,4 +10,7 @@ hostname $new_host_name > /dev/null 2>&1
 echo $new_host_name > /etc/hostname
 sed -i "/127.0.0.1/a $new_ip_address $new_host_name.$new_domain_name $new_host_name" /etc/hosts > /dev/null 2>&1
 perl -p -i -e 'if(/run-parts/) { s/^\d+/unpack("%32C*",qx{hostname -s})%60/e; s/^([\d*]+\s+)\d+/$1.($.-8)/e; }' /etc/crontab > /dev/null 2>&1
+if test -d /usr/local/psa; then
+  PSA_PASSWORD="$(date +%s | sha256sum | base64 | head -c 25)" /usr/local/psa/admin/sbin/ch_admin_passwd > /dev/null 2>&1
+fi
 rm /etc/dhcp/dhclient-exit-hooks.d/cloud-guest-setup > /dev/null 2>&1
