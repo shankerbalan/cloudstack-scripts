@@ -1,10 +1,11 @@
 #!/bin/sh
-#
-# Update hostname from DHCP
+# /etc/dhcp/dhclient-exit-hooks.d/cloud-guest-setup
+# runs on firstboot after acquiring DHCP lease
 #
 if [ "$reason" != BOUND ] && [ "$reason" != RENEW ] && [ "$reason" != REBIND ] && [ "$reason" != REBOOT ]; then
     return
 fi
 
-hostname $new_host_name
+hostname $new_host_name > /dev/null 2>&1
 echo $new_host_name > /etc/hostname
+sed -i "/127.0.0.1/a $new_ip_address $new_host_name.$new_domain_name $new_host_name" /etc/hosts > /dev/null 2>&1
