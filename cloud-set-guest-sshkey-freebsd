@@ -9,13 +9,13 @@
 user=root
 
 WGET=/usr/local/bin/wget
-# Add your DHCP lease folders here
-DHCP_FOLDERS="/var/db/dhclient.leases.*"
+# Add your DHCP lease files here
+DHCP_FILES="/var/db/dhclient.leases.*"
 
 keys_received=0
 file_count=0
 
-for DHCP_FILE in $DHCP_FOLDERS
+for DHCP_FILE in $DHCP_FILES
 do
 	if [ -f $DHCP_FILE ]
 	then

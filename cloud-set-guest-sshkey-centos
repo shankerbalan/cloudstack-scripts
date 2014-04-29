@@ -23,14 +23,14 @@ user=root
 # Source function library.
 . /etc/rc.d/init.d/functions
 
-# Add your DHCP lease folders here
-DHCP_FOLDERS="/var/lib/dhclient/*"
+# Add your DHCP lease files here
+DHCP_FILES="/var/lib/dhclient/*.leases"
 
 keys_received=0
 file_count=0
 
 function cloud_set_guest_sshkey() {
-    for DHCP_FILE in $DHCP_FOLDERS; do
+    for DHCP_FILE in $DHCP_FILES; do
         if [ -f $DHCP_FILE ]; then
             file_count=$((file_count+1))
             SSHKEY_SERVER_IP=$(grep dhcp-server-identifier $DHCP_FILE | tail -1 | awk '{print $NF}' | tr -d '\;')

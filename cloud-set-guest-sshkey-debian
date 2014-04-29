@@ -18,15 +18,15 @@ set -e
 # Modify this line to specify the user (default is root)
 user=root
 
-# Add your DHCP lease folders here
-DHCP_FOLDERS="/var/lib/dhcp/*"
+# Add your DHCP lease files here
+DHCP_FILES="/var/lib/dhcp/*.leases"
 
 function cloud_set_guest_sshkey() {
 
     keys_received=0
     file_count=0
 
-    for DHCP_FILE in $DHCP_FOLDERS; do
+    for DHCP_FILE in $DHCP_FILES; do
         if [ -f $DHCP_FILE ]; then
             file_count=$((file_count+1))
             SSHKEY_SERVER_IP=$(grep dhcp-server-identifier $DHCP_FILE | tail -1 | awk '{print $NF}' | tr -d '\;')
