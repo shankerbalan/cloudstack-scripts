@@ -1,6 +1,7 @@
 #!/bin/sh
 # /etc/dhcp/dhclient-exit-hooks.d/cloud-guest-setup (debian/ubuntu)
-# /etc/dhcp/dhclient-exit-hooks (centos/rhel)
+# /etc/dhcp/dhclient-exit-hooks (centos6,7/rhel6,7)
+# /etc/dhclient-exit-hooks (centos5/rhel5)
 # runs on firstboot after acquiring DHCP lease
 
 if [ "$reason" != BOUND ] && [ "$reason" != RENEW ] && [ "$reason" != REBIND ] && [ "$reason" != REBOOT ]; then
@@ -14,12 +15,16 @@ echo $new_host_name > /etc/hostname
 sed -i "/127.0.0.1/a $new_ip_address $new_host_name.$new_domain_name $new_host_name" /etc/hosts > /dev/null 2>&1
 # (ubuntu/debian) remove previous localhost-style 
 sed -i "/127.0.1.1.*$/d" /etc/hosts > /dev/null 2>&1
+
 # randomise cron timings
 perl -p -i -e 'if(/run-parts/) { s/^\d+/unpack("%32C*",qx{hostname -s})%60/e; s/^([\d*]+\s+)\d+/$1.($.-8)/e; }' /etc/crontab > /dev/null 2>&1
+
 # set random password for plesk admin, if installed
 if test -d /usr/local/psa; then
   PSA_PASSWORD="$(date +%s | sha256sum | base64 | head -c 25)" /usr/local/psa/admin/sbin/ch_admin_passwd > /dev/null 2>&1
 fi
+
 # remove self
-rm /etc/dhcp/dhclient-exit-hooks.d/cloud-guest-setup > /dev/null 2>&1
+rm /etc/dhclient-exit-hooks > /dev/null 2>&1
 rm /etc/dhcp/dhclient-exit-hooks > /dev/null 2>&1
+rm /etc/dhcp/dhclient-exit-hooks.d/cloud-guest-setup > /dev/null 2>&1
