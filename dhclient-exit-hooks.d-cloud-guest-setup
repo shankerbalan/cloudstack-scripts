@@ -20,9 +20,6 @@ perl -p -i -e 'if(/run-parts/) { s/^\d+/unpack("%32C*",qx{hostname -s})%60/e; s/
 if test -d /usr/local/psa; then
   PSA_PASSWORD="$(date +%s | sha256sum | base64 | head -c 25)" /usr/local/psa/admin/sbin/ch_admin_passwd > /dev/null 2>&1
 fi
-# run password setting script, ssh key setting script
-/etc/init.d/cloud-set-guest-password start
-/etc/init.d/cloud-set-guest-sshkey start
 # remove self
 rm /etc/dhcp/dhclient-exit-hooks.d/cloud-guest-setup > /dev/null 2>&1
 rm /etc/dhcp/dhclient-exit-hooks > /dev/null 2>&1
