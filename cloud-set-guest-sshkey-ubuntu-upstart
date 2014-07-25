@@ -1,6 +1,0 @@
-description "Cloud SSH Public Keys Download Client"
-
-start on net-device-up
-
-task
-exec /etc/init.d/cloud-set-guest-sshkey start
