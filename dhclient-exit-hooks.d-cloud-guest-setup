@@ -9,6 +9,7 @@ if [ "$reason" != BOUND ] && [ "$reason" != RENEW ] && [ "$reason" != REBIND ] &
 fi
 
 # set hostname
+logger -t "cloudstack" "Setting hostname to \"${new_host_name}\""
 hostname $new_host_name > /dev/null 2>&1
 echo $new_host_name > /etc/hostname
 # add hostname to /etc/hosts
@@ -21,21 +22,34 @@ perl -p -i -e 'if(/run-parts/) { s/^\d+/unpack("%32C*",qx{hostname -s})%60/e; s/
 
 # set random password for plesk admin, if installed
 if test -d /usr/local/psa; then
+  logger -t "cloudstack" "Plesk installed, setting initial Plesk password"
   PSA_PASSWORD="$(date +%s | sha256sum | base64 | head -c 25)" /usr/local/psa/admin/sbin/ch_admin_passwd > /dev/null 2>&1
 fi
 
-local IFCFG="/etc/sysconfig/network-scripts/ifcfg-eth0"
-if [ -f "${IFCGF}" ]; then
-  # add mac address and uuid back to ifcfg-eth0
-  ETH0_MAC=`ip addr show eth0 | awk '/ether/ {print $2}'`
-  echo "HWADDR=\"${ETH0_MAC}\"" >> ${IFCFG}
-  ETH0_UUID=`uuidgen eth0`
-  echo "UUID=\"${ETH0_UUID}\"" >> ${IFCFG}
-  # rename existing (non-uuid-set) dhcp lease file
-  mv /var/lib/dhclient/dhclient--eth0.lease /var/lib/dhclient/dhclient-${ETH0_UUID}-eth0.lease 2>/dev/null
+if [ -f /etc/debian_version ]; then
+  # generate ssh host keys on debian/ubuntu
+  logger -t "cloudstack" "Generating ssh host keys"
+  ssh-keygen -A && rm /etc/ssh/ssh_host_key{,.pub}
+  # remove self
+  rm /etc/dhcp/dhclient-exit-hooks.d/cloud-guest-setup > /dev/null 2>&1
+elif [ -f /etc/redhat-release ]; then
+  logger -t "cloudstack" "Updating eth0 configuration file ifcfg-eth0"
+  # fix centos/rhel eth0 configs
+  local IFCFG="/etc/sysconfig/network-scripts/ifcfg-eth0"
+  if [ -f "${IFCGF}" ]; then
+    # add mac address and uuid back to ifcfg-eth0
+    ETH0_MAC=`ip addr show eth0 | awk '/ether/ {print $2}'`
+    echo "HWADDR=\"${ETH0_MAC}\"" >> ${IFCFG}
+    ETH0_UUID=`uuidgen eth0`
+    echo "UUID=\"${ETH0_UUID}\"" >> ${IFCFG}
+    # rename existing (non-uuid-set) dhcp lease file
+    mv /var/lib/dhclient/dhclient--eth0.lease /var/lib/dhclient/dhclient-${ETH0_UUID}-eth0.lease 2>/dev/null
+  fi
+  # remove self
+  rm /etc/dhclient-exit-hooks > /dev/null 2>&1
+  rm /etc/dhcp/dhclient-exit-hooks > /dev/null 2>&1
+else
+  logger -t "cloudstack" "Linux Distribution not identified, setting generic values only."
 fi
 
-# remove self
-rm /etc/dhclient-exit-hooks > /dev/null 2>&1
-rm /etc/dhcp/dhclient-exit-hooks > /dev/null 2>&1
-rm /etc/dhcp/dhclient-exit-hooks.d/cloud-guest-setup > /dev/null 2>&1
+exit 0
