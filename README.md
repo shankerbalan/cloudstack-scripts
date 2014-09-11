@@ -6,7 +6,8 @@ Used inside the CloudStack guest to set various settings.
 
 - Sets root password
 - Sets ssh public key
-- Installs into:
+
+Installs into:
 ```bash
 /sbin/ifup-local # CentOS/RHEL
 /etc/network/if-up.d/cloudstack-set-guest-credentials # Debian/Ubuntu
@@ -24,7 +25,8 @@ Runs once, then removes itself
 - Generates ssh host keys (Debian/Ubuntu)
 - Sets mac address and uuid for RHEL/CentOS eth0 config file
 - Fixes dhclient lease name to use new uuid (RHEL7/CentOS7)
-- Installs into:
+
+Installs into:
 ```bash
 /etc/dhclient-exit-hooks # CentOS5/RHEL5
 /etc/dhcp/dhclient-exit-hooks # CentOS6,7/RHEL6,7
