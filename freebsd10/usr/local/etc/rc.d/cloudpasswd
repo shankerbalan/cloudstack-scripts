@@ -1,0 +1,16 @@
+#!/bin/sh
+#
+# cloudpasswd:
+#  Allows resetting root password
+#  via LeaseWeb Self Service Center
+
+# PROVIDE: cloudpasswd
+# REQUIRE: LOGIN NETWORKING cleanvar
+# KEYWORD: shutdown
+
+. /etc/rc.subr
+name="cloudpasswd"
+command="/usr/local/sbin/cloudpasswd"
+rcvar=cloudpasswd_enable
+run_rc_command "$1"
+

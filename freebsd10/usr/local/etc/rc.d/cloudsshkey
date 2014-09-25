@@ -1,0 +1,16 @@
+#!/bin/sh
+#
+# cloudsshkey:
+#  Allows setting ssh public keys
+#  via LeaseWeb Self Service Center
+
+# PROVIDE: cloudsshkey
+# REQUIRE: LOGIN NETWORKING cleanvar
+# KEYWORD: shutdown
+
+. /etc/rc.subr
+name="cloudsshkey"
+command="/usr/local/sbin/cloudsshkey"
+rcvar=cloudsshkey_enable
+run_rc_command "$1"
+
