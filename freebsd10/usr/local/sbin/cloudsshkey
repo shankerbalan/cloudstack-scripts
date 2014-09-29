@@ -20,9 +20,7 @@ keys_received=0
 file_count=0
 error_count=0
 
-${LOG} -t "cloud" "cloud-set-guest-sshkey was called"
 for DHCP_FILE in $DHCP_FILES; do
-  ${LOG} -t "cloud" "DHCP_FILE: $DHCP_FILE"
   if [ -f $DHCP_FILE ]; then
     file_count=$((file_count+1))
     maxcheck=15
@@ -31,47 +29,48 @@ for DHCP_FILE in $DHCP_FILES; do
     until valip ${ip}; do
       [ $ipcheck -eq $maxcheck ] && continue 2
       sleep 3
-      ${LOG} -t "cloud" "No valid IP \"${ip}\" found in ${DHCP_FILE}"
+      ${LOG} -t "cloud-sshkey" "No valid IP \"${ip}\" found in ${DHCP_FILE}"
       ip="$(awk -F ' |;' '/dhcp-server-identifier/ { print $5 }' ${DHCP_FILE} | tail -1)"
       ipcheck=$((ipcheck+1))
     done
     SSHKEY_SERVER_IP=$ip
     if [ -n $SSHKEY_SERVER_IP ]; then
-      ${LOG} -t "cloud" "Found ssh key server server IP \"${PASSWORD_SERVER_IP}\" in \"${DHCP_FILE}\""
-      ${LOG} -t "cloud" "Sending request to ssh key server at \"${SSHKEY_SERVER_IP}\""
+      ${LOG} -t "cloud-sshkey" "Found ssh key server IP \"${SSHKEY_SERVER_IP}\" in \"${DHCP_FILE}\""
+      ${LOG} -t "cloud-sshkey" "Sending request to ssh key server at \"${SSHKEY_SERVER_IP}\""
       publickey=$($WGET -t 3 -T 20 -O - http://$SSHKEY_SERVER_IP/latest/public-keys 2>/dev/null)
       sshkeycheck=0
       until [ $? -ne 4 ]; do
-        [ $passcheck -eq $maxcheck ] && continue 2
+        [ $sshkeycheck -eq $maxcheck ] && continue 2
         sleep 3
-        ${LOG} -t "cloud" "Wget exited with exit code $?, retrying"
+        ${LOG} -t "cloud-sshkey" "Wget exited with exit code $?, retrying"
         publickey=$(${WGET} -q -t 3 -T 20 -O - http://$SSHKEY_SERVER_IP/latest/public-keys 2>/dev/null)
         sshkeycheck=$((sshkeycheck+1))
       done
       sshkey=$(echo $sshkey | tr -d '\r')
 
       if [ $? -eq 0 ]; then
-        ${LOG} -t "cloud" "Got response from server at $SSHKEY_SERVER_IP"
+        ${LOG} -t "cloud-sshkey" "Got response from server at $SSHKEY_SERVER_IP"
         keys_received=1
         break
       fi
     else
-      ${LOG} -t "cloud" "Could not find ssh key server IP in $DHCP_FILE"
+      ${LOG} -t "cloud-sshkey" "Could not find ssh key server IP in $DHCP_FILE"
     fi
   fi
 done
 
 if [ "$keys_received" == "0" ]; then
   if [ "$error_count" == "$file_count" ]; then
-    ${LOG} -t "cloud" "Failed to get ssh keys from any server"
+    ${LOG} -t "cloud-sshkey" "Failed to get ssh keys from any server"
     exit 1
   else
-    ${LOG} -t "cloud" "Did not need to set ssh keys."
+    ${LOG} -t "cloud-sshkey" "Did not need to set ssh keys."
     exit 0
   fi
 fi
 
 # set ssh public key
+${LOG} -t "cloud-sshkey" "Adding ssh public key ..."
 homedir=$(grep ^$user /etc/passwd|awk -F ":" '{print $6}')
 sshdir=$homedir/.ssh
 authorized=$sshdir/authorized_keys
