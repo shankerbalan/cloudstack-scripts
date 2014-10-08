@@ -1,5 +1,5 @@
 #!/bin/sh
-# /etc/dhcp/dhclient-exit-hooks.d/cloud-guest-setup (debian/ubuntu)
+# /etc/dhcp/dhclient-exit-hooks.d/cloudstack-guest-setup (debian/ubuntu)
 # /etc/dhcp/dhclient-exit-hooks (centos6,7/rhel6,7)
 # /etc/dhclient-exit-hooks (centos5/rhel5)
 # /etc/dhclient-enter-hooks (freebsd)
@@ -48,7 +48,7 @@ if [ "${OSTYPE}" == "DEBIAN" ]; then
   ${LOGGER} -t "cloudstack" "Generating ssh host keys"
   ssh-keygen -A && rm /etc/ssh/ssh_host_key{,.pub}
   # remove self
-  rm /etc/dhcp/dhclient-exit-hooks.d/cloud-guest-setup > /dev/null 2>&1
+  rm /etc/dhcp/dhclient-exit-hooks.d/cloudstack-guest-setup > /dev/null 2>&1
 elif [ "${OSTYPE}" == "REDHAT" ]; then
   ${LOGGER} -t "cloudstack" "Updating eth0 configuration file ifcfg-eth0"
   # fix centos/rhel eth0 configs

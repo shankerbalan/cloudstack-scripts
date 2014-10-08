@@ -13,7 +13,7 @@ Installs into:
 /etc/network/if-up.d/cloudstack-set-guest-credentials # Debian/Ubuntu
 ```
 
-## cloud-guest-setup
+## cloudstack-guest-setup
 
 Generic linux dhclient exit hook
 Runs once, then removes itself
@@ -30,5 +30,5 @@ Installs into:
 ```bash
 /etc/dhclient-exit-hooks # CentOS5/RHEL5
 /etc/dhcp/dhclient-exit-hooks # CentOS6,7/RHEL6,7
-/etc/dhcp/dhclient-exit-hooks.d/cloud-guest-setup # Debian/Ubuntu
+/etc/dhcp/dhclient-exit-hooks.d/cloudstack-guest-setup # Debian/Ubuntu
 ```
