@@ -1,0 +1,75 @@
+#!/bin/sh
+# /etc/dhcp/dhclient-exit-hooks.d/cloudstack-guest-setup (debian/ubuntu)
+# /etc/dhcp/dhclient-exit-hooks (centos6,7/rhel6,7)
+# /etc/dhclient-exit-hooks (centos5/rhel5)
+# /etc/dhclient-enter-hooks (freebsd)
+# runs on firstboot after acquiring DHCP lease
+
+if [ "$reason" != BOUND ] && [ "$reason" != RENEW ] && [ "$reason" != REBIND ] && [ "$reason" != REBOOT ]; then
+    return
+fi
+
+SED=$(which sed)
+LOGGER=$(which logger)
+HOSTNAME=$(which hostname)
+
+if test -f /etc/freebsd-update.conf; then OSTYPE="FREEBSD"
+elif test -f /etc/debian_version; then OSTYPE="DEBIAN"
+elif test -f /etc/redhat_release; then OSTYPE="REDHAT"
+else OSTYPE="UNKNOWN"
+fi
+
+# set hostname
+${LOGGER} -t "cloudstack" "Setting hostname to \"${new_host_name}\""
+${HOSTNAME} "$new_host_name" > /dev/null 2>&1
+if [ "${OSTYPE}" = "FREEBSD" ]; then
+  ${SED} -i '/^hostname.*/d' /etc/rc.conf
+  echo "hostname=\"${new_host_name}\"" >> /etc/rc.conf
+else
+  echo "$new_host_name" > /etc/hostname
+fi
+
+# add hostname to /etc/hosts
+${SED} -i "/127.0.0.1/a $new_ip_address $new_host_name.$new_domain_name $new_host_name" /etc/hosts > /dev/null 2>&1
+
+# randomise cron timings
+perl -p -i -e 'if(/run-parts/) { s/^\d+/unpack("%32C*",qx{hostname -s})%60/e; s/^([\d*]+\s+)\d+/$1.($.-8)/e; }' /etc/crontab > /dev/null 2>&1
+
+# set random password for plesk admin, if installed
+if test -d /usr/local/psa; then
+  ${LOGGER} -t "cloudstack" "Plesk installed, setting initial Plesk password"
+  PSA_PASSWORD="$(date +%s | sha256sum | base64 | head -c 25)" /usr/local/psa/admin/sbin/ch_admin_passwd > /dev/null 2>&1
+fi
+
+if [ "${OSTYPE}" = "DEBIAN" ]; then
+  # (ubuntu/debian) remove previous localhost-style 
+  ${SED} -i "/127.0.1.1.*$/d" /etc/hosts > /dev/null 2>&1
+  # generate ssh host keys on debian/ubuntu
+  ${LOGGER} -t "cloudstack" "Generating ssh host keys"
+  ssh-keygen -A && rm /etc/ssh/ssh_host_key /etc/ssh/ssh_host_key.pub
+  # remove self
+  rm /etc/dhcp/dhclient-exit-hooks.d/cloudstack-guest-setup > /dev/null 2>&1
+elif [ "${OSTYPE}" = "REDHAT" ]; then
+  ${LOGGER} -t "cloudstack" "Updating eth0 configuration file ifcfg-eth0"
+  # fix centos/rhel eth0 configs
+  local IFCFG="/etc/sysconfig/network-scripts/ifcfg-eth0"
+  if test -f "${IFCGF}" ; then
+    # add mac address and uuid back to ifcfg-eth0
+    ETH0_MAC=$(ip addr show eth0 | awk '/ether/ {print $2}')
+    echo "HWADDR=\"${ETH0_MAC}\"" >> ${IFCFG}
+    ETH0_UUID=$(uuidgen eth0)
+    echo "UUID=\"${ETH0_UUID}\"" >> ${IFCFG}
+    # rename existing (non-uuid-set) dhcp lease file
+    mv /var/lib/dhclient/dhclient--eth0.lease /var/lib/dhclient/dhclient-"${ETH0_UUID}"-eth0.lease 2>/dev/null
+  fi
+  # remove self
+  rm /etc/dhclient-exit-hooks > /dev/null 2>&1
+  rm /etc/dhcp/dhclient-exit-hooks > /dev/null 2>&1
+elif [ "${OSTYPE}" = "FREEBSD" ]; then
+  # remove self
+  rm /etc/dhclient-enter-hooks
+else
+  ${LOGGER} -t "cloudstack" "Linux Distribution not identified, setting generic values only."
+fi
+
+exit 0

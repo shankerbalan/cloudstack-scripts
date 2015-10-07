@@ -1,0 +1,91 @@
+#!/bin/sh
+#
+# Init file for SSH Public Keys Download Client for FreeBSD
+#
+# chkconfig: 345 98 02
+# description: SSH Public Keys Download Client
+
+# Modify this line to specify the user (default is root)
+user=root
+
+# Add your DHCP lease files here
+DHCP_FILES="/var/db/dhclient.leases.*"
+WGET=/usr/local/bin/wget
+LOG=/usr/bin/logger
+
+valip() {
+    echo $1 | /usr/bin/grep -Eq '^(25[0-5]|2[0-4][0-9]|[0-1]{1}[0-9]{2}|[1-9]{1}[0-9]{1}|[1-9])\.(25[0-5]|2[0-4][0-9]|[0-1]{1}[0-9]{2}|[1-9]{1}[0-9]{1}|[1-9]|0)\.(25[0-5]|2[0-4][0-9]|[0-1]{1}[0-9]{2}|[1-9]{1}[0-9]{1}|[1-9]|0)\.(25[0-5]|2[0-4][0-9]|[0-1]{1}[0-9]{2}|[1-9]{1}[0-9]{1}|[0-9])'
+}
+keys_received=0
+file_count=0
+error_count=0
+
+for DHCP_FILE in $DHCP_FILES; do
+  if [ -f $DHCP_FILE ]; then
+    file_count=$((file_count+1))
+    maxcheck=15
+    ip="$(awk -F ' |;' '/dhcp-server-identifier/ { print $5 }' ${DHCP_FILE} | tail -1)"
+    ipcheck=0
+    until valip ${ip}; do
+      [ $ipcheck -eq $maxcheck ] && continue 2
+      sleep 3
+      ${LOG} -t "cloud-sshkey" "No valid IP \"${ip}\" found in ${DHCP_FILE}"
+      ip="$(awk -F ' |;' '/dhcp-server-identifier/ { print $5 }' ${DHCP_FILE} | tail -1)"
+      ipcheck=$((ipcheck+1))
+    done
+    SSHKEY_SERVER_IP=$ip
+    if [ -n $SSHKEY_SERVER_IP ]; then
+      ${LOG} -t "cloud-sshkey" "Found ssh key server IP \"${SSHKEY_SERVER_IP}\" in \"${DHCP_FILE}\""
+      ${LOG} -t "cloud-sshkey" "Sending request to ssh key server at \"${SSHKEY_SERVER_IP}\""
+      publickey=$($WGET -t 3 -T 20 -O - http://$SSHKEY_SERVER_IP/latest/public-keys 2>/dev/null)
+      sshkeycheck=0
+      until [ $? -ne 4 ]; do
+        [ $sshkeycheck -eq $maxcheck ] && continue 2
+        sleep 3
+        ${LOG} -t "cloud-sshkey" "Wget exited with exit code $?, retrying"
+        publickey=$(${WGET} -q -t 3 -T 20 -O - http://$SSHKEY_SERVER_IP/latest/public-keys 2>/dev/null)
+        sshkeycheck=$((sshkeycheck+1))
+      done
+      sshkey=$(echo $sshkey | tr -d '\r')
+
+      if [ $? -eq 0 ]; then
+        ${LOG} -t "cloud-sshkey" "Got response from server at $SSHKEY_SERVER_IP"
+        keys_received=1
+        break
+      fi
+    else
+      ${LOG} -t "cloud-sshkey" "Could not find ssh key server IP in $DHCP_FILE"
+    fi
+  fi
+done
+
+if [ "$keys_received" == "0" ]; then
+  if [ "$error_count" == "$file_count" ]; then
+    ${LOG} -t "cloud-sshkey" "Failed to get ssh keys from any server"
+    exit 1
+  else
+    ${LOG} -t "cloud-sshkey" "Did not need to set ssh keys."
+    exit 0
+  fi
+fi
+
+# set ssh public key
+${LOG} -t "cloud-sshkey" "Adding ssh public key ..."
+homedir=$(grep ^$user /etc/passwd|awk -F ":" '{print $6}')
+sshdir=$homedir/.ssh
+authorized=$sshdir/authorized_keys
+
+if [ ! -e $sshdir ]; then
+    mkdir $sshdir
+fi
+
+if [ ! -e $authorized ]; then
+    touch $authorized
+fi
+
+if [ `grep -c "$publickey" $authorized` == 0 ]
+then
+        echo "$publickey" >> $authorized
+fi
+
+exit 0
