@@ -12,5 +12,6 @@
 name="cloudpasswd"
 command="/usr/local/sbin/cloudpasswd"
 rcvar=cloudpasswd_enable
+load_rc_config "${name}"
 run_rc_command "$1"
 

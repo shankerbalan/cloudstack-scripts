@@ -12,5 +12,6 @@
 name="cloudsshkey"
 command="/usr/local/sbin/cloudsshkey"
 rcvar=cloudsshkey_enable
+load_rc_config "${name}"
 run_rc_command "$1"
 
