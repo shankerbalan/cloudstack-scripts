@@ -2,6 +2,12 @@
 
 Used inside the CloudStack guest to set various settings. 
 
+
+## FreeBSD
+
+I would suggest to tar up what is in the freebsd10 folder and extract it to / (the root folder).
+I
+
 ## cloudstack-set-guest-credentials
 
 - Sets root password
